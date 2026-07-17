@@ -1,0 +1,12 @@
+# OS 产生的缓存文件
+.DS_Store
+
+# Xcode 编译产生的缓存与本地临时文件（核心忽略）
+build/
+DerivedData/
+*.hmap
+
+# Xcode 用户本地个性化配置
+xcuserdata/
+*.xcuserdatad
+*.xcworkspace/contents.xcuserstatedata
