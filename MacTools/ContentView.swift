@@ -28,7 +28,9 @@ struct ContentView: View {
       if let item = selectedItem {
         item.view()
       } else {
-        Welcome()
+        Welcome {
+          selectedItem = sidebarItems[0]
+        }
       }
     }
     .enableInjection()
