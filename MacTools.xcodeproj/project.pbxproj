@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		CF50A8DF300A353700CBC966 /* Inject in Frameworks */ = {isa = PBXBuildFile; productRef = CF50A8DE300A353700CBC966 /* Inject */; };
+		CF3FEAEB300C4B3300BFD4DC /* Inject in Frameworks */ = {isa = PBXBuildFile; productRef = CF3FEAEA300C4B3300BFD4DC /* Inject */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,7 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CF50A8DF300A353700CBC966 /* Inject in Frameworks */,
+				CF3FEAEB300C4B3300BFD4DC /* Inject in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -70,7 +70,7 @@
 			);
 			name = MacTools;
 			packageProductDependencies = (
-				CF50A8DE300A353700CBC966 /* Inject */,
+				CF3FEAEA300C4B3300BFD4DC /* Inject */,
 			);
 			productName = MacTools;
 			productReference = CF60306F3008E3AF009517B1 /* MacTools.app */;
@@ -102,7 +102,7 @@
 			mainGroup = CF6030663008E3AF009517B1;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				CF50A8DD300A353700CBC966 /* XCRemoteSwiftPackageReference "Inject" */,
+				CF3FEAE9300C4B3300BFD4DC /* XCRemoteSwiftPackageReference "Inject" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = CF6030703008E3AF009517B1 /* Products */;
@@ -294,9 +294,8 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -340,7 +339,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		CF50A8DD300A353700CBC966 /* XCRemoteSwiftPackageReference "Inject" */ = {
+		CF3FEAE9300C4B3300BFD4DC /* XCRemoteSwiftPackageReference "Inject" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "git@github.com:krzysztofzablocki/Inject.git";
 			requirement = {
@@ -351,9 +350,9 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		CF50A8DE300A353700CBC966 /* Inject */ = {
+		CF3FEAEA300C4B3300BFD4DC /* Inject */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = CF50A8DD300A353700CBC966 /* XCRemoteSwiftPackageReference "Inject" */;
+			package = CF3FEAE9300C4B3300BFD4DC /* XCRemoteSwiftPackageReference "Inject" */;
 			productName = Inject;
 		};
 /* End XCSwiftPackageProductDependency section */

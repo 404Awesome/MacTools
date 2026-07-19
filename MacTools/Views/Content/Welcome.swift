@@ -2,11 +2,11 @@ import SwiftUI
 
 struct Welcome: View {
   #if DEBUG
-  @ObserveInjection var forceRedraw
+    @ObserveInjection var forceRedraw
   #endif
 
   var body: some View {
-    Text("Welcome View")
+    Text("Hello World")
       .enableInjection()
   }
 }
