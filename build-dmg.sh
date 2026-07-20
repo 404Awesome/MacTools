@@ -4,7 +4,7 @@
 # ========== 配置区 ==========
 APP_NAME="MacTools"           # 你的应用名称
 SCHEME_NAME="MacTools"        # Xcode Scheme
-VERSION="1.0.1"
+VERSION="1.1.0"
 BUILD_DIR="./build"
 OUTPUT_DIR="./dist"
 # ===========================
