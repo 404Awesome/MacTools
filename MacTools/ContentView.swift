@@ -14,7 +14,7 @@ struct ContentView: View {
   }
   let sidebarItems = [
     SidebarItem(title: "插件加载") { AnyView(PluginLoad()) },
-    SidebarItem(title: "应用签名") { AnyView(AppSignature()) },
+    SidebarItem(title: "修复应用") { AnyView(FixMacApp()) },
   ]
 
   @State private var selectedItem: SidebarItem?
