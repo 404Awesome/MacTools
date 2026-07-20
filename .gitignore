@@ -10,3 +10,6 @@ DerivedData/
 xcuserdata/
 *.xcuserdatad
 *.xcworkspace/contents.xcuserstatedata
+
+# create-dmg 生成dmg文件
+dist/
