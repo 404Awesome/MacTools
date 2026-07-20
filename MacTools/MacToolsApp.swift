@@ -6,6 +6,9 @@ struct MacToolsApp: App {
     WindowGroup {
       ContentView()
     }
+    .commands {
+      SidebarCommands()
+    }
     .windowStyle(.hiddenTitleBar)
     .defaultSize(width: 900, height: 570)
   }

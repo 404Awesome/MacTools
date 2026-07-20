@@ -1,8 +1,3 @@
-//
-//  PluginLoad.swift
-//  ExcelTools
-//
-
 import AppKit
 import Combine
 @preconcurrency import Dispatch
@@ -10,6 +5,7 @@ import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
 
+// MARK: - 插件加载
 // MARK: - 配色
 
 struct GH {
@@ -793,19 +789,24 @@ struct PluginLoad: View {
 
   var body: some View {
     ZStack {
+      // 使用 Welcome 原样的浅灰底色，不做修改
+      Color(red: 0.941, green: 0.945, blue: 0.957)
+        .ignoresSafeArea()
+
+      // 复用 Welcome 中的 MovingGridLines，原样不做修改
+      MovingGridLines(spacing: 32)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea()
+
+      // 核心修正：HStack 及左右面板不再加任何 .background(...)
+      // 让网格直接透过面板间隙和边缘显示出来
       HStack(spacing: 0) {
         leftPanel
-        Divider().opacity(0.15)
         rightPanel
       }
       .frame(minWidth: 720, minHeight: 480)
-      .background(GH.adaptiveBg)
       .onDrop(of: [UTType.fileURL.identifier], isTargeted: $isTargeted) { handleDrop($0) }
       .overlay(dropOverlay)
-
-      if vm.showDevModeConfirm {
-        devModeAlert
-      }
     }
     .alert("确认清空部署目录", isPresented: $vm.showClearConfirm) {
       Button("取消", role: .cancel) {}
@@ -813,31 +814,31 @@ struct PluginLoad: View {
     } message: {
       Text("将删除部署目录下的所有文件，此操作不可撤销。")
     }
+    .alert("进入开发模式", isPresented: $vm.showDevModeConfirm) {
+      Button("取消", role: .cancel) {}
+      Button("确认清空", role: .destructive) { vm.enterDevMode() }
+    } message: {
+      Text("进入开发模式将清空部署目录下的所有插件文件，便于重新加载开发版本。此操作不可撤销。")
+    }
   }
 
-  // MARK: - 左侧面板
+  // MARK: - 左侧面板（已移除所有 .background(...)）
   private var leftPanel: some View {
     VStack(spacing: 0) {
-      // Header：彻底去掉顶部 padding，紧贴窗口上边缘
+      // Header：已移除图标
       HStack(spacing: 10) {
-        Image(systemName: "cube.box.fill")
-          .font(.system(size: 18))
-          .foregroundStyle(GH.adaptiveAccent)
         VStack(alignment: .leading, spacing: 0) {
           Text("WPSJS 构建中心")
-            .font(.system(size: 15, weight: .bold))
+            .font(.system(size: 17))
             .foregroundColor(GH.adaptiveFg)
           Text("离线打包 · 一键部署")
-            .font(.system(size: 10))
+            .font(.system(size: 12))
             .foregroundColor(GH.adaptiveMuted)
         }
         Spacer()
       }
       .padding(.horizontal, 14)
       .padding(.bottom, 6)
-      .background(GH.adaptiveBg)
-
-      Divider().opacity(0.15)
 
       ScrollView(.vertical, showsIndicators: false) {
         VStack(spacing: 12) {
@@ -853,7 +854,6 @@ struct PluginLoad: View {
       bottomActionBar
     }
     .frame(width: 270)
-    .background(GH.adaptiveBg)
   }
 
   // MARK: - 项目卡片
@@ -861,7 +861,7 @@ struct PluginLoad: View {
     VStack(alignment: .leading, spacing: 10) {
       HStack {
         Text("项目")
-          .font(.system(size: 11, weight: .semibold))
+          .font(.system(size: 13))
           .foregroundColor(GH.adaptiveMuted)
           .textCase(.uppercase)
         Spacer()
@@ -871,7 +871,7 @@ struct PluginLoad: View {
               .fill(GH.adaptiveSuccess)
               .frame(width: 5, height: 5)
             Text("已验证")
-              .font(.system(size: 10, weight: .medium))
+              .font(.system(size: 12))
               .foregroundColor(GH.adaptiveSuccess)
           }
           .padding(.horizontal, 7)
@@ -888,10 +888,10 @@ struct PluginLoad: View {
             .font(.system(size: 14))
           VStack(alignment: .leading, spacing: 1) {
             Text(info.name)
-              .font(.system(size: 13, weight: .semibold))
+              .font(.system(size: 15))
               .foregroundColor(GH.adaptiveFg)
             Text("v\(info.version)")
-              .font(.system(size: 11))
+              .font(.system(size: 13))
               .foregroundColor(GH.adaptiveMuted)
           }
           Spacer()
@@ -905,7 +905,7 @@ struct PluginLoad: View {
             .foregroundColor(GH.adaptiveError)
             .font(.system(size: 14))
           Text(info.error ?? "项目无效")
-            .font(.system(size: 12))
+            .font(.system(size: 14))
             .foregroundColor(GH.adaptiveError)
           Spacer()
         }
@@ -917,13 +917,13 @@ struct PluginLoad: View {
       VStack(spacing: 6) {
         HStack(spacing: 6) {
           Image(systemName: "folder")
-            .font(.system(size: 11))
+            .font(.system(size: 13))
             .foregroundColor(GH.adaptiveMuted)
           Text(
             vm.projectPath.isEmpty
               ? "拖拽或点击选择..." : (vm.projectPath as NSString).abbreviatingWithTildeInPath
           )
-          .font(.system(size: 11))
+          .font(.system(size: 13))
           .lineLimit(1)
           .foregroundColor(vm.projectPath.isEmpty ? GH.adaptiveMuted : GH.adaptiveFg)
           Spacer()
@@ -935,8 +935,8 @@ struct PluginLoad: View {
 
         Button(action: vm.selectDirectory) {
           HStack(spacing: 4) {
-            Image(systemName: "folder.badge.plus").font(.system(size: 10))
-            Text("选择目录").font(.system(size: 11, weight: .medium))
+            Image(systemName: "folder.badge.plus").font(.system(size: 12))
+            Text("选择目录").font(.system(size: 13))
           }
           .frame(maxWidth: .infinity)
           .padding(.vertical, 6)
@@ -956,7 +956,7 @@ struct PluginLoad: View {
   private var horizontalProgressBar: some View {
     VStack(alignment: .leading, spacing: 10) {
       Text("构建进度")
-        .font(.system(size: 11, weight: .semibold))
+        .font(.system(size: 13))
         .foregroundColor(GH.adaptiveMuted)
         .textCase(.uppercase)
 
@@ -971,16 +971,16 @@ struct PluginLoad: View {
                   .frame(width: 28, height: 28)
                 if isDone(step) {
                   Image(systemName: "checkmark")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: 10))
                     .foregroundColor(GH.adaptiveSuccess)
                 } else {
                   Image(systemName: step.icon)
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.system(size: 10))
                     .foregroundColor(circleFg(step))
                 }
               }
               Text(step.rawValue)
-                .font(.system(size: 9, weight: isActive(step) ? .semibold : .regular))
+                .font(.system(size: 11))
                 .foregroundColor(labelColor(step))
             }
             .frame(maxWidth: .infinity)
@@ -1005,10 +1005,9 @@ struct PluginLoad: View {
     .clipShape(RoundedRectangle(cornerRadius: 12))
   }
 
-  // MARK: - 底部操作栏
+  // MARK: - 底部操作栏（已移除 .background(...)）
   private var bottomActionBar: some View {
     VStack(spacing: 0) {
-      Divider().opacity(0.15)
       VStack(spacing: 10) {
         HStack(spacing: 8) {
           Circle()
@@ -1016,7 +1015,7 @@ struct PluginLoad: View {
             .frame(width: 7, height: 7)
             .shadow(color: statusDot.opacity(0.4), radius: 3, x: 0, y: 0)
           Text(vm.status)
-            .font(.system(size: 11, weight: .medium))
+            .font(.system(size: 13))
             .foregroundColor(statusColor)
             .lineLimit(1)
           Spacer()
@@ -1026,9 +1025,9 @@ struct PluginLoad: View {
           Button(action: vm.confirmDevMode) {
             HStack(spacing: 4) {
               Image(systemName: "flame.fill")
-                .font(.system(size: 10))
+                .font(.system(size: 12))
               Text("开发模式")
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: 13))
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 6)
@@ -1042,9 +1041,9 @@ struct PluginLoad: View {
           Button(action: vm.isProcessing ? vm.cancelBuild : vm.startBuild) {
             HStack(spacing: 4) {
               Image(systemName: vm.isProcessing ? "stop.fill" : "play.fill")
-                .font(.system(size: 10))
+                .font(.system(size: 12))
               Text(vm.isProcessing ? "停止构建" : "开始打包")
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: 13))
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 6)
@@ -1058,24 +1057,22 @@ struct PluginLoad: View {
       .padding(.horizontal, 12)
       .padding(.vertical, 12)
     }
-    .background(GH.adaptiveBg)
   }
 
-  // MARK: - 右侧面板
+  // MARK: - 右侧面板（已移除所有 .background(...)）
   private var rightPanel: some View {
     VStack(spacing: 0) {
-      // Header：同步去掉顶部 padding，与左侧严格对齐
       HStack(spacing: 8) {
         Image(systemName: "terminal.fill")
-          .font(.system(size: 12))
+          .font(.system(size: 14))
           .foregroundColor(GH.adaptiveAccent)
         Text("构建日志")
-          .font(.system(size: 13, weight: .semibold))
+          .font(.system(size: 15))
           .foregroundColor(GH.adaptiveFg)
         Spacer()
         if !vm.logs.isEmpty {
           Text("\(vm.logs.count)")
-            .font(.system(size: 10, design: .monospaced))
+            .font(.system(size: 12, design: .monospaced))
             .foregroundColor(GH.adaptiveMuted)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
@@ -1084,7 +1081,7 @@ struct PluginLoad: View {
 
           Button(action: vm.clearLogs) {
             Image(systemName: "eraser")
-              .font(.system(size: 11))
+              .font(.system(size: 13))
           }
           .buttonStyle(.borderless)
           .foregroundColor(GH.adaptiveMuted)
@@ -1092,7 +1089,7 @@ struct PluginLoad: View {
 
           Button(action: vm.exportLogs) {
             Image(systemName: "square.and.arrow.up")
-              .font(.system(size: 11))
+              .font(.system(size: 13))
           }
           .buttonStyle(.borderless)
           .foregroundColor(GH.adaptiveMuted)
@@ -1105,7 +1102,7 @@ struct PluginLoad: View {
           .disabled(vm.isProcessing)
         } label: {
           Image(systemName: "ellipsis.circle")
-            .font(.system(size: 14))
+            .font(.system(size: 16))
             .foregroundColor(GH.adaptiveMuted)
         }
         .menuStyle(.borderlessButton)
@@ -1113,9 +1110,6 @@ struct PluginLoad: View {
       }
       .padding(.horizontal, 14)
       .padding(.bottom, 6)
-      .background(GH.adaptiveBg)
-
-      Divider().opacity(0.15)
 
       ScrollViewReader { proxy in
         ScrollView(.vertical, showsIndicators: true) {
@@ -1130,7 +1124,6 @@ struct PluginLoad: View {
           }
           .padding(.vertical, 4)
         }
-        .background(GH.adaptiveBg)
         .onChange(of: vm.logs.count) {
           withAnimation(.easeOut(duration: 0.2)) {
             proxy.scrollTo("BOTTOM", anchor: .bottom)
@@ -1139,71 +1132,6 @@ struct PluginLoad: View {
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .background(GH.adaptiveBg)
-  }
-
-  // MARK: - 自定义开发模式警告弹窗
-  private var devModeAlert: some View {
-    ZStack {
-      Color.black.opacity(0.35)
-        .ignoresSafeArea()
-        .onTapGesture { vm.showDevModeConfirm = false }
-
-      VStack(spacing: 16) {
-        ZStack {
-          RoundedRectangle(cornerRadius: 16)
-            .fill(GH.adaptiveError.opacity(0.1))
-            .frame(width: 56, height: 56)
-          Image(systemName: "exclamationmark.triangle.fill")
-            .font(.system(size: 28))
-            .foregroundColor(GH.adaptiveError)
-        }
-
-        VStack(spacing: 6) {
-          Text("进入开发模式")
-            .font(.system(size: 16, weight: .bold))
-            .foregroundColor(GH.adaptiveFg)
-          Text("进入开发模式将清空部署目录下的所有插件文件，便于重新加载开发版本。此操作不可撤销。")
-            .font(.system(size: 12))
-            .foregroundColor(GH.adaptiveMuted)
-            .multilineTextAlignment(.center)
-            .lineSpacing(3)
-        }
-        .padding(.horizontal, 4)
-
-        HStack(spacing: 10) {
-          Button(action: { vm.showDevModeConfirm = false }) {
-            Text("取消")
-              .font(.system(size: 13, weight: .medium))
-              .foregroundColor(GH.adaptiveFg)
-              .frame(maxWidth: .infinity)
-              .padding(.vertical, 9)
-          }
-          .buttonStyle(.bordered)
-          .clipShape(RoundedRectangle(cornerRadius: 8))
-
-          Button(action: { vm.enterDevMode() }) {
-            Text("确认清空")
-              .font(.system(size: 13, weight: .semibold))
-              .foregroundColor(.white)
-              .frame(maxWidth: .infinity)
-              .padding(.vertical, 9)
-          }
-          .buttonStyle(.borderedProminent)
-          .tint(GH.adaptiveError)
-          .clipShape(RoundedRectangle(cornerRadius: 8))
-        }
-      }
-      .padding(20)
-      .frame(width: 340)
-      .background(
-        RoundedRectangle(cornerRadius: 16)
-          .fill(GH.adaptiveBg)
-          .shadow(color: Color.black.opacity(0.2), radius: 20, x: 0, y: 10)
-      )
-      .padding(40)
-    }
-    .transition(.opacity.combined(with: .scale(scale: 0.9)))
   }
 
   // MARK: - 进度条辅助
@@ -1254,10 +1182,10 @@ struct PluginLoad: View {
         .font(.system(size: 36))
         .foregroundColor(GH.adaptiveBorder)
       Text("等待任务启动...")
-        .font(.system(size: 13, weight: .medium))
+        .font(.system(size: 15))
         .foregroundColor(GH.adaptiveMuted)
       Text("拖拽项目文件夹到窗口即可快速加载")
-        .font(.system(size: 11))
+        .font(.system(size: 13))
         .foregroundColor(GH.adaptiveMuted.opacity(0.6))
     }
     .padding(.top, 100)
@@ -1272,11 +1200,11 @@ struct PluginLoad: View {
         .padding(.vertical, 1)
       HStack(alignment: .firstTextBaseline, spacing: 10) {
         Text(entry.timeString)
-          .font(.system(size: 10, design: .monospaced))
+          .font(.system(size: 12, design: .monospaced))
           .foregroundColor(GH.adaptiveMuted.opacity(0.5))
           .frame(width: 52, alignment: .leading)
         Text(entry.message)
-          .font(.system(size: 12, design: .monospaced))
+          .font(.system(size: 14, design: .monospaced))
           .foregroundColor(
             entry.level == .error
               ? GH.adaptiveError : (entry.level == .success ? GH.adaptiveSuccess : GH.adaptiveFg)
@@ -1305,7 +1233,7 @@ struct PluginLoad: View {
                 .font(.system(size: 48))
                 .foregroundColor(GH.adaptiveAccent)
               Text("释放以加载项目")
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 17))
                 .foregroundColor(GH.adaptiveAccent)
             }
           )

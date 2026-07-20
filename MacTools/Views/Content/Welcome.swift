@@ -1,5 +1,6 @@
 import SwiftUI
 
+// MARK: - 欢迎页(默认视图)
 struct Welcome: View {
   let onStart: () -> Void
 
@@ -112,27 +113,33 @@ struct Welcome: View {
 
 // MARK: - 网格背景 + 浮动表情
 struct MovingGridBackgroundView: View {
-  let faces: [String] = ["😊", "😎", "🤩", "🥳", "😄", "🤗", "😉", "🙂"]
+  let faces: [String] = [
+    "😂", "🤣", "🥹", "😉", "😘", "😋", "🤨", "🤓", "😎", "🤩", "🥳", "😏", "😭", "😠", "🤫", "🤔", "🫩", "🤤", "🤡",
+    "🥴",
+  ]
   let gridSpacing: CGFloat = 32
+  let faceCount = 18
 
   var body: some View {
     GeometryReader { geo in
+      let positions = generateNonOverlappingPositions(
+        count: faceCount,
+        size: geo.size,
+        minDistance: 70
+      )
+      // 打乱表情池并截取所需数量，确保同一屏不重复
+      let shuffledFaces = Array(faces.shuffled().prefix(positions.count))
+
       ZStack {
         // 水平移动的网格线（左上角对齐，铺满）
         MovingGridLines(spacing: gridSpacing)
           .frame(width: geo.size.width, height: geo.size.height)
 
         // 浮动表情（随机分布在四周，互不重叠）
-        let positions = generateNonOverlappingPositions(
-          count: 12,
-          size: geo.size,
-          minDistance: 70
-        )
-
         ForEach(0..<positions.count, id: \.self) { i in
           let pos = positions[i]
           FloatingFace(
-            emoji: faces[i % faces.count],
+            emoji: shuffledFaces[i],
             size: CGFloat(48 + Int.random(in: 0...24)),
             baseX: pos.x,
             baseY: pos.y,

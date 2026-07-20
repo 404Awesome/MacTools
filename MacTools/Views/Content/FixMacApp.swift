@@ -2,7 +2,8 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-// MARK: - 修复应用主视图（Welcome 风格 · 纯网格背景）
+// MARK: - 修复应用
+// MARK: - 修复应用主视图
 struct FixMacApp: View {
   @State private var selectedApp: URL?
   @State private var hasQuarantine: Bool = false
