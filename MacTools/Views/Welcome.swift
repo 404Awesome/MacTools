@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - 欢迎页(默认视图)
+// 欢迎页：打字机标题、渐入内容与动态网格背景
 struct Welcome: View {
   let onStart: () -> Void
 
@@ -13,19 +13,16 @@ struct Welcome: View {
 
   var body: some View {
     ZStack {
-      // 网格背景铺满整个页面（带水平移动）
       MovingGridBackgroundView()
         .ignoresSafeArea()
 
-      // 内容层居中
       VStack(spacing: 0) {
-        // 打字机效果标题
+        // 打字机效果标题 + 闪烁光标
         HStack(spacing: 0) {
           Text(typedText)
             .font(codeFont(size: 44))
             .foregroundColor(Color(red: 0.067, green: 0.067, blue: 0.153))
 
-          // 闪烁光标
           Rectangle()
             .fill(Color(red: 0.067, green: 0.067, blue: 0.153))
             .frame(width: 3, height: 44)
@@ -38,16 +35,16 @@ struct Welcome: View {
           startTyping()
         }
 
-        // 副标题：从下往上渐入
+        // 副标题：从下方渐入
         Text(tagline)
           .font(codeFont(size: 15))
           .foregroundColor(Color(red: 0.612, green: 0.639, blue: 0.686))
           .padding(.top, 18)
           .opacity(showContent ? 1 : 0)
           .offset(y: showContent ? 0 : 20)
-          .animation(.easeOut(duration: 0.6).delay(0), value: showContent)
+          .animation(.easeOut(duration: 0.6), value: showContent)
 
-        // 按钮：从下往上渐入
+        // 开始按钮：从下方渐入，支持悬停缩放
         Button(action: onStart) {
           HStack(spacing: 8) {
             Text("开始使用")
@@ -78,6 +75,7 @@ struct Welcome: View {
     .background(Color(red: 0.941, green: 0.945, blue: 0.957))
   }
 
+  // 逐字打印标题，完成后触发内容显示并隐藏光标
   private func startTyping() {
     showCursor = true
     var index = 0
@@ -100,6 +98,7 @@ struct Welcome: View {
     }
   }
 
+  // 优先使用 JetBrains Mono，回退到 Consolas，最后使用系统字体
   private func codeFont(size: CGFloat) -> Font {
     if let nsFont = NSFont(name: "JetBrains Mono", size: size) {
       return Font(nsFont as CTFont)
@@ -111,7 +110,7 @@ struct Welcome: View {
   }
 }
 
-// MARK: - 网格背景 + 浮动表情
+// 动态背景：水平移动的网格线 + 随机分布的浮动表情
 struct MovingGridBackgroundView: View {
   let faces: [String] = [
     "😂", "🤣", "🥹", "😉", "😘", "😋", "🤨", "🤓", "😎", "🤩", "🥳", "😏", "😭", "😠", "🤫", "🤔", "🫩", "🤤", "🤡",
@@ -127,15 +126,11 @@ struct MovingGridBackgroundView: View {
         size: geo.size,
         minDistance: 70
       )
-      // 打乱表情池并截取所需数量，确保同一屏不重复
       let shuffledFaces = Array(faces.shuffled().prefix(positions.count))
 
       ZStack {
-        // 水平移动的网格线（左上角对齐，铺满）
         MovingGridLines(spacing: gridSpacing)
-          .frame(width: geo.size.width, height: geo.size.height)
 
-        // 浮动表情（随机分布在四周，互不重叠）
         ForEach(0..<positions.count, id: \.self) { i in
           let pos = positions[i]
           FloatingFace(
@@ -151,58 +146,42 @@ struct MovingGridBackgroundView: View {
     }
   }
 
-  /// 随机生成不重叠的位置，避开中心文字区域
+  // 在视图边缘随机生成互不重叠的位置，避开中心文字区域
   private func generateNonOverlappingPositions(count: Int, size: CGSize, minDistance: CGFloat)
     -> [CGPoint]
   {
-    // 防止尺寸为0或过小导致崩溃
-    guard size.width > 100, size.height > 100 else {
-      return []
-    }
+    guard size.width > 100, size.height > 100 else { return [] }
 
-    // 中心文字区域（留空）
-    let centerW: CGFloat = 340
-    let centerH: CGFloat = 220
     let centerX = size.width / 2
     let centerY = size.height / 2
-    let avoidMinX = centerX - centerW / 2
-    let avoidMaxX = centerX + centerW / 2
-    let avoidMinY = centerY - centerH / 2
-    let avoidMaxY = centerY + centerH / 2
+    let avoidMinX = centerX - 170
+    let avoidMaxX = centerX + 170
+    let avoidMinY = centerY - 110
+    let avoidMaxY = centerY + 110
 
     var positions: [CGPoint] = []
     let margin: CGFloat = 50
     let maxAttempts = 500
-
-    // 安全边界，确保 lowerBound <= upperBound
-    let safeMinX = min(margin, size.width / 2)
-    let safeMaxX = max(size.width - margin, size.width / 2 + 1)
-    let safeMinY = min(margin, size.height / 2)
-    let safeMaxY = max(size.height - margin, size.height / 2 + 1)
 
     for _ in 0..<count {
       var attempts = 0
       var found = false
 
       while attempts < maxAttempts && !found {
-        let x = CGFloat.random(in: safeMinX...safeMaxX)
-        let y = CGFloat.random(in: safeMinY...safeMaxY)
+        let x = CGFloat.random(in: margin...size.width - margin)
+        let y = CGFloat.random(in: margin...size.height - margin)
         let candidate = CGPoint(x: x, y: y)
 
-        // 检查是否在中心区域
-        let inCenter = x >= avoidMinX && x <= avoidMaxX && y >= avoidMinY && y <= avoidMaxY
-        if inCenter {
+        if x >= avoidMinX && x <= avoidMaxX && y >= avoidMinY && y <= avoidMaxY {
           attempts += 1
           continue
         }
 
-        // 检查是否与已有位置重叠
         var tooClose = false
         for existing in positions {
           let dx = candidate.x - existing.x
           let dy = candidate.y - existing.y
-          let dist = sqrt(dx * dx + dy * dy)
-          if dist < minDistance {
+          if sqrt(dx * dx + dy * dy) < minDistance {
             tooClose = true
             break
           }
@@ -221,7 +200,7 @@ struct MovingGridBackgroundView: View {
   }
 }
 
-// MARK: - 水平移动的网格线（左上角对齐，铺满）
+// 水平无限循环移动的网格线
 struct MovingGridLines: View {
   let spacing: CGFloat
 
@@ -233,7 +212,7 @@ struct MovingGridLines: View {
       let vCount = Int(geo.size.height / spacing) + 4
 
       ZStack {
-        // 竖线（从 x=0 开始，左上角对齐，水平移动）
+        // 竖线：从左向右排列，整体水平平移实现循环滚动
         ForEach(0..<hCount, id: \.self) { i in
           Rectangle()
             .fill(Color.black.opacity(0.035))
@@ -242,7 +221,7 @@ struct MovingGridLines: View {
             .offset(x: CGFloat(i) * spacing + gridOffset)
         }
 
-        // 横线（从 y=0 开始，左上角对齐）
+        // 横线：从上向下排列
         ForEach(0..<vCount, id: \.self) { i in
           Rectangle()
             .fill(Color.black.opacity(0.035))
@@ -260,7 +239,7 @@ struct MovingGridLines: View {
   }
 }
 
-// MARK: - 浮动表情（不重叠，80%透明度）
+// 浮动表情：根据 animIndex 应用不同方向的漂移动画
 struct FloatingFace: View {
   let emoji: String
   let size: CGFloat

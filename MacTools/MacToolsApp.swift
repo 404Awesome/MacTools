@@ -14,30 +14,29 @@ struct MacToolsApp: App {
   }
 }
 
-// InjectionNext注入
+// 内联热重载兼容性代码：当项目未引入 HotSwiftUI 或 Inject 包时，
+// 提供 DEBUG 模式下 InjectionIII / InjectionNext 所需的最小基础设施。
 #if canImport(HotSwiftUI)
   @_exported import HotSwiftUI
 #elseif canImport(Inject)
   @_exported import Inject
 #else
-  // This code can be found in the Swift package:
-  // https://github.com/johnno1962/HotSwiftUI or
-  // https://github.com/krzysztofzablocki/Inject
 
   #if DEBUG
     import Combine
 
+    // 监听 Injection 通知的单例，通过发布状态变更触发视图重绘。
     public class InjectionObserver: ObservableObject {
       public static let shared = InjectionObserver()
       @Published var injectionNumber = 0
-      var cancellable: AnyCancellable? = nil
+      var cancellable: AnyCancellable?
       let publisher = PassthroughSubject<Void, Never>()
+
       init() {
         cancellable = NotificationCenter.default.publisher(
-          for:
-            Notification.Name("INJECTION_BUNDLE_NOTIFICATION")
+          for: Notification.Name("INJECTION_BUNDLE_NOTIFICATION")
         )
-        .sink { [weak self] change in
+        .sink { [weak self] _ in
           self?.injectionNumber += 1
           self?.publisher.send()
         }
@@ -45,21 +44,25 @@ struct MacToolsApp: App {
     }
 
     extension SwiftUI.View {
+      // 类型擦除包装，用于消除热重载后的类型差异。
       public func eraseToAnyView() -> some SwiftUI.View {
-        return AnyView(self)
+        AnyView(self)
       }
+
+      // 启用热重载支持，DEBUG 下执行类型擦除。
       public func enableInjection() -> some SwiftUI.View {
-        return eraseToAnyView()
+        eraseToAnyView()
       }
+
+      // 接收 Injection 通知后执行自定义状态刷新逻辑。
       public func onInjection(bumpState: @escaping () -> Void) -> some SwiftUI.View {
-        return
-          self
+        self
           .onReceive(InjectionObserver.shared.publisher, perform: bumpState)
           .eraseToAnyView()
       }
     }
 
-    @available(iOS 13.0, macOS 10.15, tvOS 13.0, watchOS 6.0, *)
+    // 属性包装器：观察 InjectionObserver 的变化以强制视图重绘。
     @propertyWrapper
     public struct ObserveInjection: DynamicProperty {
       @ObservedObject private var iO = InjectionObserver.shared
@@ -70,18 +73,20 @@ struct MacToolsApp: App {
       }
     }
   #else
+    // RELEASE 模式：热重载 API 退化为空实现，编译后无运行时开销。
     extension SwiftUI.View {
       @inline(__always)
-      public func eraseToAnyView() -> some SwiftUI.View { return self }
+      public func eraseToAnyView() -> some SwiftUI.View { self }
+
       @inline(__always)
-      public func enableInjection() -> some SwiftUI.View { return self }
+      public func enableInjection() -> some SwiftUI.View { self }
+
       @inline(__always)
       public func onInjection(bumpState: @escaping () -> Void) -> some SwiftUI.View {
-        return self
+        self
       }
     }
 
-    @available(iOS 13.0, macOS 10.15, tvOS 13.0, watchOS 6.0, *)
     @propertyWrapper
     public struct ObserveInjection {
       public init() {}

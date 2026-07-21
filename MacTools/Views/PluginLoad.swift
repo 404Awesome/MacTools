@@ -5,25 +5,21 @@ import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
 
-// MARK: - 插件加载
-// MARK: - 配色
-
+// 主题配色管理：支持 macOS 明暗模式自适应
 struct GH {
   static let light: [String: Color] = [
     "success": Color(hex: "16a34a"), "error": Color(hex: "dc2626"),
     "warning": Color(hex: "d97706"), "info": Color(hex: "2563eb"),
     "muted": Color(hex: "6b7280"), "fg": Color(hex: "111827"),
-    "bg": Color(hex: "ffffff"), "border": Color(hex: "e5e7eb"),
-    "subtle": Color(hex: "f9fafb"), "accent": Color(hex: "2563eb"),
-    "surface": Color(hex: "f3f4f6"),
+    "border": Color(hex: "e5e7eb"), "subtle": Color(hex: "f9fafb"),
+    "accent": Color(hex: "2563eb"), "surface": Color(hex: "f3f4f6"),
   ]
   static let dark: [String: Color] = [
     "success": Color(hex: "4ade80"), "error": Color(hex: "f87171"),
     "warning": Color(hex: "fbbf24"), "info": Color(hex: "60a5fa"),
     "muted": Color(hex: "9ca3af"), "fg": Color(hex: "f3f4f6"),
-    "bg": Color(hex: "0f172a"), "border": Color(hex: "1e293b"),
-    "subtle": Color(hex: "1e293b"), "accent": Color(hex: "60a5fa"),
-    "surface": Color(hex: "1e293b"),
+    "border": Color(hex: "1e293b"), "subtle": Color(hex: "1e293b"),
+    "accent": Color(hex: "60a5fa"), "surface": Color(hex: "1e293b"),
   ]
   static let adaptiveSuccess = Color.adaptive(light: light["success"]!, dark: dark["success"]!)
   static let adaptiveError = Color.adaptive(light: light["error"]!, dark: dark["error"]!)
@@ -31,7 +27,6 @@ struct GH {
   static let adaptiveInfo = Color.adaptive(light: light["info"]!, dark: dark["info"]!)
   static let adaptiveMuted = Color.adaptive(light: light["muted"]!, dark: dark["muted"]!)
   static let adaptiveFg = Color.adaptive(light: light["fg"]!, dark: dark["fg"]!)
-  static let adaptiveBg = Color.adaptive(light: light["bg"]!, dark: dark["bg"]!)
   static let adaptiveBorder = Color.adaptive(light: light["border"]!, dark: dark["border"]!)
   static let adaptiveSubtle = Color.adaptive(light: light["subtle"]!, dark: dark["subtle"]!)
   static let adaptiveAccent = Color.adaptive(light: light["accent"]!, dark: dark["accent"]!)
@@ -60,10 +55,10 @@ extension Color {
   }
 }
 
-// MARK: - 模型
-
+// 日志级别，用于区分控制台输出的语义
 enum LogLevel: String {
   case info, success, warning, error, command
+
   var color: Color {
     switch self {
     case .info: return GH.adaptiveMuted
@@ -75,6 +70,7 @@ enum LogLevel: String {
   }
 }
 
+// 单条日志记录，包含时间戳、级别与消息
 struct LogEntry: Identifiable {
   let id = UUID()
   let timestamp = Date()
@@ -87,9 +83,24 @@ struct LogEntry: Identifiable {
     return f
   }()
 
+  static let periodFormatter: DateFormatter = {
+    let f = DateFormatter()
+    f.dateFormat = "a"
+    return f
+  }()
+
+  static let timeOnlyFormatter: DateFormatter = {
+    let f = DateFormatter()
+    f.dateFormat = "h:mm:ss"
+    return f
+  }()
+
   var timeString: String { Self.timeFormatter.string(from: timestamp) }
+  var periodString: String { Self.periodFormatter.string(from: timestamp) }
+  var timeOnlyString: String { Self.timeOnlyFormatter.string(from: timestamp) }
 }
 
+// 构建流程中的各个阶段，用于驱动进度条与状态展示
 enum BuildStep: String, CaseIterable {
   case idle = "等待"
   case validating = "验证"
@@ -98,35 +109,14 @@ enum BuildStep: String, CaseIterable {
   case deploying = "部署"
   case finished = "完成"
   case failed = "失败"
-
-  var icon: String {
-    switch self {
-    case .idle: return "circle"
-    case .validating: return "doc.text.magnifyingglass"
-    case .checkingEnv: return "terminal"
-    case .building: return "cube.box"
-    case .deploying: return "arrow.down.doc"
-    case .finished: return "checkmark.seal"
-    case .failed: return "exclamationmark.triangle"
-    }
-  }
-  var color: Color {
-    switch self {
-    case .idle: return .gray
-    case .validating: return GH.adaptiveInfo
-    case .checkingEnv: return .purple
-    case .building: return GH.adaptiveWarning
-    case .deploying: return GH.adaptiveAccent
-    case .finished: return GH.adaptiveSuccess
-    case .failed: return GH.adaptiveError
-    }
-  }
 }
 
+// 项目基本信息，由验证流程生成
 struct ProjectInfo {
   let path: String, name: String, version: String, isValid: Bool, error: String?
 }
 
+// 构建与部署过程中可能遇到的错误类型
 enum BuildError: LocalizedError {
   case projectInvalid(reason: String)
   case wpsjsNotFound
@@ -158,13 +148,13 @@ enum BuildError: LocalizedError {
 
 private let kLastPath = "com.exceltools.lastProjectPath"
 
-// MARK: - 服务
-
+// 核心构建服务：负责项目验证、调用 wpsjs 构建、产物查找与部署
 final class WPSJSBuildService: @unchecked Sendable {
   nonisolated(unsafe) private var proc: Process?
   nonisolated(unsafe) private var isBuilding = false
   private let buildTimeout: TimeInterval = 300
 
+  // 检查项目目录是否包含有效的 package.json
   func validateProject(_ path: String) -> ProjectInfo {
     let jsonPath = (path as NSString).appendingPathComponent("package.json")
     guard FileManager.default.fileExists(atPath: jsonPath) else {
@@ -191,11 +181,13 @@ final class WPSJSBuildService: @unchecked Sendable {
     }
   }
 
+  // 在常见路径中查找 wpsjs 可执行文件
   func findWpsjs() -> [String] {
     ["/opt/homebrew/bin/wpsjs", "/usr/local/bin/wpsjs", "/usr/bin/wpsjs"]
       .filter { FileManager.default.isExecutableFile(atPath: $0) }
   }
 
+  // 在常见路径中查找 7z 可执行文件
   func find7zPath() -> String? {
     let possiblePaths = [
       "/opt/homebrew/bin/7z",
@@ -205,6 +197,7 @@ final class WPSJSBuildService: @unchecked Sendable {
     return possiblePaths.first(where: { FileManager.default.isExecutableFile(atPath: $0) })
   }
 
+  // 执行 wpsjs build，实时通过 onLog 回调输出日志
   func build(_ projectPath: String, onLog: @escaping (LogEntry) -> Void) async -> Result<
     String, Error
   > {
@@ -333,6 +326,7 @@ final class WPSJSBuildService: @unchecked Sendable {
     })
   }
 
+  // 将构建产物部署到 WPS 的 jsaddons 目录，支持回滚
   func deploy(output: String, info: ProjectInfo, onLog: @escaping (LogEntry) -> Void) async throws
     -> Bool
   {
@@ -523,6 +517,7 @@ final class WPSJSBuildService: @unchecked Sendable {
     return code == 0
   }
 
+  // 清理构建临时目录
   func cleanBuildDir(projectPath: String, onLog: @escaping (LogEntry) -> Void) {
     let buildDir = (projectPath as NSString).appendingPathComponent("wps-addon-build")
     guard FileManager.default.fileExists(atPath: buildDir) else { return }
@@ -534,12 +529,14 @@ final class WPSJSBuildService: @unchecked Sendable {
     }
   }
 
+  // WPS 插件部署目录路径
   var jsaddonsPath: URL {
     FileManager.default.homeDirectoryForCurrentUser
       .appendingPathComponent(
         "Library/Containers/com.kingsoft.wpsoffice.mac/Data/.kingsoft/wps/jsaddons")
   }
 
+  // 清空部署目录，用于开发模式或重置环境
   func clearDeployDirectory(onLog: @escaping (LogEntry) -> Void) throws {
     let fm = FileManager.default
     let path = jsaddonsPath.path
@@ -561,8 +558,7 @@ final class WPSJSBuildService: @unchecked Sendable {
   }
 }
 
-// MARK: - ViewModel
-
+// 视图模型：管理项目状态、构建流程与日志
 final class PluginLoadViewModel: ObservableObject {
   @Published var projectPath: String {
     didSet { UserDefaults.standard.set(projectPath, forKey: kLastPath) }
@@ -590,6 +586,7 @@ final class PluginLoadViewModel: ObservableObject {
     }
   }
 
+  // 通过 NSOpenPanel 选择项目目录
   func selectDirectory() {
     let panel = NSOpenPanel()
     panel.canChooseDirectories = true
@@ -601,6 +598,7 @@ final class PluginLoadViewModel: ObservableObject {
     }
   }
 
+  // 加载并验证指定路径的项目
   func loadProject(_ path: String) {
     projectPath = path
     logs.removeAll()
@@ -610,6 +608,7 @@ final class PluginLoadViewModel: ObservableObject {
     status = info.isValid ? "\(info.name) v\(info.version) — 就绪" : "\(info.error ?? "无效项目")"
   }
 
+  // 启动完整的构建与部署流程
   func startBuild() {
     guard canBuild, let info = projectInfo else { return }
     isProcessing = true
@@ -702,6 +701,7 @@ final class PluginLoadViewModel: ObservableObject {
 
   func clearLogs() { logs.removeAll() }
 
+  // 注：当前 UI 未提供触发入口，保留以备扩展
   func confirmClearDeploy() {
     showClearConfirm = true
   }
@@ -734,6 +734,7 @@ final class PluginLoadViewModel: ObservableObject {
     showDevModeConfirm = true
   }
 
+  // 清空部署目录并进入开发模式
   func enterDevMode() {
     showDevModeConfirm = false
     logs.removeAll()
@@ -760,6 +761,7 @@ final class PluginLoadViewModel: ObservableObject {
     }
   }
 
+  // 导出当前日志到文本文件
   func exportLogs() {
     let panel = NSSavePanel()
     panel.allowedContentTypes = [.plainText]
@@ -776,30 +778,25 @@ final class PluginLoadViewModel: ObservableObject {
     do {
       try logContent.write(to: url, atomically: true, encoding: .utf8)
     } catch {
-      // Handle error silently or show alert
+      // 导出失败时静默处理，避免打断用户流程
     }
   }
 }
 
-// MARK: - View
-
+// 主视图：左右分栏布局，左侧为项目信息与操作，右侧为构建日志
 struct PluginLoad: View {
   @StateObject private var vm = PluginLoadViewModel()
   @State private var isTargeted = false
 
   var body: some View {
     ZStack {
-      // 使用 Welcome 原样的浅灰底色，不做修改
       Color(red: 0.941, green: 0.945, blue: 0.957)
         .ignoresSafeArea()
 
-      // 复用 Welcome 中的 MovingGridLines，原样不做修改
       MovingGridLines(spacing: 32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea()
 
-      // 核心修正：HStack 及左右面板不再加任何 .background(...)
-      // 让网格直接透过面板间隙和边缘显示出来
       HStack(spacing: 0) {
         leftPanel
         rightPanel
@@ -807,12 +804,6 @@ struct PluginLoad: View {
       .frame(minWidth: 720, minHeight: 480)
       .onDrop(of: [UTType.fileURL.identifier], isTargeted: $isTargeted) { handleDrop($0) }
       .overlay(dropOverlay)
-    }
-    .alert("确认清空部署目录", isPresented: $vm.showClearConfirm) {
-      Button("取消", role: .cancel) {}
-      Button("确认清空", role: .destructive) { vm.executeClearDeploy() }
-    } message: {
-      Text("将删除部署目录下的所有文件，此操作不可撤销。")
     }
     .alert("进入开发模式", isPresented: $vm.showDevModeConfirm) {
       Button("取消", role: .cancel) {}
@@ -822,10 +813,8 @@ struct PluginLoad: View {
     }
   }
 
-  // MARK: - 左侧面板（已移除所有 .background(...)）
   private var leftPanel: some View {
     VStack(spacing: 0) {
-      // Header：已移除图标
       HStack(spacing: 10) {
         VStack(alignment: .leading, spacing: 0) {
           Text("WPSJS 构建中心")
@@ -856,7 +845,6 @@ struct PluginLoad: View {
     .frame(width: 270)
   }
 
-  // MARK: - 项目卡片
   private var projectCard: some View {
     VStack(alignment: .leading, spacing: 10) {
       HStack {
@@ -952,60 +940,111 @@ struct PluginLoad: View {
     .clipShape(RoundedRectangle(cornerRadius: 12))
   }
 
-  // MARK: - 横向构建进度条
   private var horizontalProgressBar: some View {
-    VStack(alignment: .leading, spacing: 10) {
+    VStack(alignment: .leading, spacing: 12) {
       Text("构建进度")
         .font(.system(size: 13))
         .foregroundColor(GH.adaptiveMuted)
         .textCase(.uppercase)
 
+      StripedProgressBar(
+        progress: progressFraction(),
+        isFailed: vm.currentStep == .failed
+      )
+      .frame(height: 14)
+
       HStack(spacing: 0) {
         let steps = BuildStep.allCases.filter { $0 != .idle && $0 != .failed }
         ForEach(Array(steps.enumerated()), id: \.element) { index, step in
-          HStack(spacing: 0) {
-            VStack(spacing: 4) {
-              ZStack {
-                Circle()
-                  .fill(circleBg(step))
-                  .frame(width: 28, height: 28)
-                if isDone(step) {
-                  Image(systemName: "checkmark")
-                    .font(.system(size: 10))
-                    .foregroundColor(GH.adaptiveSuccess)
-                } else {
-                  Image(systemName: step.icon)
-                    .font(.system(size: 10))
-                    .foregroundColor(circleFg(step))
-                }
-              }
-              Text(step.rawValue)
-                .font(.system(size: 11))
-                .foregroundColor(labelColor(step))
-            }
+          Text(step.rawValue)
+            .font(.system(size: 13, weight: isActive(step) ? .semibold : .regular))
+            .foregroundColor(labelColor(step))
             .frame(maxWidth: .infinity)
-
-            if index < steps.count - 1 {
-              Rectangle()
-                .fill(lineColor(step))
-                .frame(height: 2)
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 2)
-                .padding(.bottom, 10)
-            }
-          }
         }
       }
-      .padding(10)
-      .background(GH.adaptiveSurface)
-      .clipShape(RoundedRectangle(cornerRadius: 8))
     }
     .padding(12)
     .background(GH.adaptiveSubtle)
     .clipShape(RoundedRectangle(cornerRadius: 12))
   }
 
-  // MARK: - 底部操作栏（已移除 .background(...)）
+  private func progressFraction() -> CGFloat {
+    switch vm.currentStep {
+    case .idle: return 0
+    case .validating: return 0.25
+    case .checkingEnv: return 0.5
+    case .building: return 0.75
+    case .deploying: return 0.9
+    case .finished: return 1.0
+    case .failed: return 0.85
+    }
+  }
+
+  // 带动画条纹的进度条，使用 TimelineView 实现平滑循环
+  private struct StripedProgressBar: View {
+    let progress: CGFloat
+    let isFailed: Bool
+
+    var body: some View {
+      TimelineView(.animation(minimumInterval: 1 / 60)) { context in
+        GeometryReader { geo in
+          let phase = Self.phase(for: context.date)
+          ZStack(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 3)
+              .fill(GH.adaptiveBorder.opacity(0.2))
+
+            RoundedRectangle(cornerRadius: 3)
+              .fill(barColor)
+              .frame(width: max(0, geo.size.width * progress))
+              .overlay(
+                DiagonalStripes()
+                  .fill(.white.opacity(0.28))
+                  .frame(width: geo.size.width + 60, height: geo.size.height)
+                  .offset(x: phase)
+              )
+              .mask(
+                RoundedRectangle(cornerRadius: 3)
+                  .frame(width: max(0, geo.size.width * progress), height: geo.size.height)
+              )
+              .animation(.easeInOut(duration: 0.5), value: progress)
+          }
+          .clipShape(RoundedRectangle(cornerRadius: 3))
+        }
+      }
+    }
+
+    private var barColor: Color {
+      isFailed ? GH.adaptiveError : GH.adaptiveSuccess
+    }
+
+    private static func phase(for date: Date) -> CGFloat {
+      let duration: Double = 0.6
+      let t = date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: duration)
+      return -(CGFloat(t) / CGFloat(duration)) * 20
+    }
+  }
+
+  private struct DiagonalStripes: Shape {
+    let stripeWidth: CGFloat = 10
+    let spacing: CGFloat = 10
+
+    func path(in rect: CGRect) -> Path {
+      var path = Path()
+      let totalW = rect.width + rect.height
+      let count = Int(totalW / (stripeWidth + spacing)) + 5
+
+      for i in 0..<count {
+        let x = CGFloat(i) * (stripeWidth + spacing)
+        path.move(to: CGPoint(x: x, y: rect.height))
+        path.addLine(to: CGPoint(x: x + stripeWidth, y: rect.height))
+        path.addLine(to: CGPoint(x: x + stripeWidth - rect.height, y: 0))
+        path.addLine(to: CGPoint(x: x - rect.height, y: 0))
+        path.closeSubpath()
+      }
+      return path
+    }
+  }
+
   private var bottomActionBar: some View {
     VStack(spacing: 0) {
       VStack(spacing: 10) {
@@ -1049,7 +1088,7 @@ struct PluginLoad: View {
             .padding(.vertical, 6)
           }
           .buttonStyle(.borderedProminent)
-          .tint(vm.isProcessing ? GH.adaptiveError : GH.adaptiveAccent)
+          .tint(vm.isProcessing ? GH.adaptiveError : GH.adaptiveSuccess)
           .disabled(!vm.canBuild && !vm.isProcessing)
           .clipShape(RoundedRectangle(cornerRadius: 8))
         }
@@ -1059,13 +1098,9 @@ struct PluginLoad: View {
     }
   }
 
-  // MARK: - 右侧面板（已移除所有 .background(...)）
   private var rightPanel: some View {
     VStack(spacing: 0) {
       HStack(spacing: 8) {
-        Image(systemName: "terminal.fill")
-          .font(.system(size: 14))
-          .foregroundColor(GH.adaptiveAccent)
         Text("构建日志")
           .font(.system(size: 15))
           .foregroundColor(GH.adaptiveFg)
@@ -1095,24 +1130,12 @@ struct PluginLoad: View {
           .foregroundColor(GH.adaptiveMuted)
           .help("导出日志")
         }
-        Menu {
-          Button(action: vm.confirmClearDeploy) {
-            Label("清空部署目录", systemImage: "trash")
-          }
-          .disabled(vm.isProcessing)
-        } label: {
-          Image(systemName: "ellipsis.circle")
-            .font(.system(size: 16))
-            .foregroundColor(GH.adaptiveMuted)
-        }
-        .menuStyle(.borderlessButton)
-        .frame(width: 28)
       }
       .padding(.horizontal, 14)
       .padding(.bottom, 6)
 
       ScrollViewReader { proxy in
-        ScrollView(.vertical, showsIndicators: true) {
+        ScrollView(.vertical, showsIndicators: false) {
           LazyVStack(alignment: .leading, spacing: 0) {
             ForEach(vm.logs) { entry in
               logRow(entry).id(entry.id)
@@ -1134,8 +1157,6 @@ struct PluginLoad: View {
     .frame(maxWidth: .infinity, maxHeight: .infinity)
   }
 
-  // MARK: - 进度条辅助
-
   private func isDone(_ step: BuildStep) -> Bool {
     stepIdx(step) < stepIdx(vm.currentStep) && vm.currentStep != .failed
   }
@@ -1144,37 +1165,15 @@ struct PluginLoad: View {
     vm.currentStep == step
   }
 
-  private func circleBg(_ step: BuildStep) -> Color {
-    if isActive(step) { return step.color.opacity(0.15) }
-    if isDone(step) { return GH.adaptiveSuccess.opacity(0.15) }
-    return GH.adaptiveSurface
-  }
-
-  private func circleFg(_ step: BuildStep) -> Color {
-    if isActive(step) { return step.color }
-    if isDone(step) { return GH.adaptiveSuccess }
-    return GH.adaptiveMuted
-  }
-
   private func labelColor(_ step: BuildStep) -> Color {
-    if isActive(step) { return GH.adaptiveFg }
-    if isDone(step) { return GH.adaptiveSuccess }
-    return GH.adaptiveMuted
-  }
-
-  private func lineColor(_ step: BuildStep) -> Color {
-    let idx = stepIdx(step)
-    let cur = stepIdx(vm.currentStep)
-    if idx < cur { return GH.adaptiveSuccess }
-    if idx == cur && vm.currentStep != .idle && vm.currentStep != .failed {
-      return GH.adaptiveAccent
+    if isDone(step) || (vm.currentStep == .finished && step == .finished) {
+      return GH.adaptiveSuccess
     }
-    return GH.adaptiveBorder.opacity(0.4)
+    if isActive(step) { return GH.adaptiveFg }
+    return GH.adaptiveMuted
   }
 
   private func stepIdx(_ step: BuildStep) -> Int { BuildStep.allCases.firstIndex(of: step) ?? 0 }
-
-  // MARK: - 其他组件
 
   private var emptyLogState: some View {
     VStack(spacing: 10) {
@@ -1199,10 +1198,18 @@ struct PluginLoad: View {
         .frame(width: 3)
         .padding(.vertical, 1)
       HStack(alignment: .firstTextBaseline, spacing: 10) {
-        Text(entry.timeString)
-          .font(.system(size: 12, design: .monospaced))
-          .foregroundColor(GH.adaptiveMuted.opacity(0.5))
-          .frame(width: 52, alignment: .leading)
+        VStack(alignment: .leading, spacing: 0) {
+          Text(entry.periodString)
+            .font(.system(size: 10))
+            .foregroundColor(GH.adaptiveMuted.opacity(0.5))
+            .lineLimit(1)
+          Text(entry.timeOnlyString)
+            .font(.system(size: 12, design: .monospaced))
+            .foregroundColor(GH.adaptiveMuted.opacity(0.5))
+            .lineLimit(1)
+        }
+        .frame(width: 60, alignment: .leading)
+
         Text(entry.message)
           .font(.system(size: 14, design: .monospaced))
           .foregroundColor(

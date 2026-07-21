@@ -9,9 +9,11 @@ struct ContentView: View {
     let id = UUID()
     let title: String
     let view: () -> AnyView
-    func hash(into hasher: inout Hasher) { hasher.combine(title) }
-    static func == (lhs: SidebarItem, rhs: SidebarItem) -> Bool { lhs.title == rhs.title }
+
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
+    static func == (lhs: SidebarItem, rhs: SidebarItem) -> Bool { lhs.id == rhs.id }
   }
+
   let sidebarItems = [
     SidebarItem(title: "插件加载") { AnyView(PluginLoad()) },
     SidebarItem(title: "修复应用") { AnyView(FixMacApp()) },
@@ -24,7 +26,8 @@ struct ContentView: View {
   var body: some View {
     NavigationSplitView(columnVisibility: $columnVisibility) {
       List(sidebarItems, selection: $selectedItem) { item in
-        NavigationLink(item.title, value: item)
+        Text(item.title)
+          .tag(item)
       }
     } detail: {
       if let item = selectedItem {
@@ -42,11 +45,11 @@ struct ContentView: View {
         }
       }
     )
+    .navigationTitle("MacTools")
     .enableInjection()
   }
 }
 
-// MARK: - 稳定的快捷键监听（基于 viewDidMoveToWindow 生命周期）
 struct ShortcutMonitor: NSViewRepresentable {
   let key: String
   let modifiers: NSEvent.ModifierFlags

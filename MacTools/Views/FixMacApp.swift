@@ -2,8 +2,7 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-// MARK: - 修复应用
-// MARK: - 修复应用主视图
+// 移除应用隔离属性的主视图
 struct FixMacApp: View {
   @State private var selectedApp: URL?
   @State private var hasQuarantine: Bool = false
@@ -11,31 +10,30 @@ struct FixMacApp: View {
   @State private var statusMessage: String = ""
   @State private var statusColor: Color = Color(red: 0.612, green: 0.639, blue: 0.686)
 
-  // 打字机效果
+  // 打字机效果状态
   @State private var typedTitle = ""
   @State private var showCursor = true
   private let fullTitle = "修复应用"
 
-  // 系统状态
+  // 系统安全状态
   @State private var sipEnabled: Bool = true
   @State private var anySourceEnabled: Bool = false
 
-  // 拖放悬停
+  // 拖放悬停状态
   @State private var isDropHovering: Bool = false
 
-  // 颜色常量
+  // 主题色
   private let cText = Color(red: 0.067, green: 0.067, blue: 0.153)
   private let cMuted = Color(red: 0.612, green: 0.639, blue: 0.686)
   private let cBg = Color(red: 0.941, green: 0.945, blue: 0.957)
 
   var body: some View {
     ZStack {
-      // 复用 Welcome.swift 中已定义的 MovingGridLines
       MovingGridLines(spacing: 32)
         .ignoresSafeArea()
 
       VStack(spacing: 0) {
-        // 顶部标题区（打字机效果）
+        // 打字机效果标题
         HStack(spacing: 0) {
           Text(typedTitle)
             .font(codeFont(size: 36))
@@ -56,7 +54,7 @@ struct FixMacApp: View {
           startTyping()
         }
 
-        // 系统状态标签
+        // SIP 与 Gatekeeper 状态标签
         HStack(spacing: 12) {
           StatusBadge(
             label: sipEnabled ? "SIP 已开启" : "SIP 已关闭",
@@ -70,7 +68,7 @@ struct FixMacApp: View {
         .padding(.top, 20)
         .padding(.bottom, 32)
 
-        // 拖放区域
+        // 拖放接收区域
         DropZoneView(onDrop: handleDrop, isHovering: $isDropHovering)
           .frame(width: 400, height: 140)
           .background(
@@ -109,14 +107,14 @@ struct FixMacApp: View {
           )
           .padding(.bottom, 32)
 
-        // 应用信息
+        // 选中应用的信息与操作卡片
         if let app = selectedApp {
           appInfoCard(app: app)
             .padding(.bottom, 20)
             .transition(.opacity.combined(with: .move(edge: .bottom)))
         }
 
-        // 状态消息
+        // 操作状态提示
         if !statusMessage.isEmpty {
           HStack(spacing: 6) {
             Image(systemName: statusIcon)
@@ -143,6 +141,7 @@ struct FixMacApp: View {
     }
   }
 
+  // 根据当前状态颜色返回对应图标
   private var statusIcon: String {
     switch statusColor {
     case .green: return "checkmark.circle.fill"
@@ -152,7 +151,7 @@ struct FixMacApp: View {
     }
   }
 
-  // MARK: - 打字机效果
+  // 逐字显示标题并控制光标闪烁
   private func startTyping() {
     showCursor = true
     var index = 0
@@ -170,7 +169,7 @@ struct FixMacApp: View {
     }
   }
 
-  // MARK: - 检测系统状态
+  // 异步检测 SIP 和 Gatekeeper 状态
   private func checkSystemStatus() {
     DispatchQueue.global(qos: .userInitiated).async {
       let sipOutput = runCommand("/usr/bin/csrutil", ["status"])
@@ -186,8 +185,7 @@ struct FixMacApp: View {
     }
   }
 
-  // MARK: - 应用信息卡片
-  @ViewBuilder
+  // 应用信息卡片：展示图标、名称、隔离状态及操作按钮
   private func appInfoCard(app: URL) -> some View {
     VStack(spacing: 20) {
       HStack(spacing: 12) {
@@ -259,7 +257,7 @@ struct FixMacApp: View {
     .shadow(color: Color.black.opacity(0.04), radius: 12, x: 0, y: 4)
   }
 
-  // MARK: - 处理拖放
+  // 处理拖放或选择传入的应用路径
   private func handleDrop(_ url: URL) {
     withAnimation(.easeOut(duration: 0.3)) {
       selectedApp = url
@@ -281,7 +279,7 @@ struct FixMacApp: View {
     }
   }
 
-  // MARK: - 检查隔离属性
+  // 手动检查选中应用的隔离属性
   private func checkQuarantine() {
     guard let app = selectedApp else { return }
     isProcessing = true
@@ -302,7 +300,7 @@ struct FixMacApp: View {
     }
   }
 
-  // MARK: - 移除隔离属性
+  // 移除选中应用的隔离属性
   private func removeQuarantine() {
     guard let app = selectedApp else { return }
     isProcessing = true
@@ -328,6 +326,7 @@ struct FixMacApp: View {
     }
   }
 
+  // 优先使用 JetBrains Mono，回退 Consolas，最后系统字体
   private func codeFont(size: CGFloat) -> Font {
     if let nsFont = NSFont(name: "JetBrains Mono", size: size) {
       return Font(nsFont as CTFont)
@@ -339,7 +338,7 @@ struct FixMacApp: View {
   }
 }
 
-// MARK: - 状态标签
+// 系统状态标签：带颜色圆点的胶囊形徽章
 struct StatusBadge: View {
   let label: String
   let color: Color
@@ -360,35 +359,19 @@ struct StatusBadge: View {
   }
 }
 
-// MARK: - 应用图标视图
+// 应用图标视图：同步加载指定路径的应用图标
 struct AppIconView: View {
   let url: URL
-  @State private var icon: NSImage?
 
   var body: some View {
-    Group {
-      if let icon = icon {
-        Image(nsImage: icon)
-          .resizable()
-          .aspectRatio(contentMode: .fit)
-      } else {
-        Image(systemName: "app.fill")
-          .font(.system(size: 28))
-          .foregroundColor(Color(red: 0.067, green: 0.067, blue: 0.153).opacity(0.3))
-      }
-    }
-    .frame(width: 36, height: 36)
-    .onAppear {
-      loadIcon()
-    }
-  }
-
-  private func loadIcon() {
-    icon = NSWorkspace.shared.icon(forFile: url.path)
+    Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
+      .resizable()
+      .aspectRatio(contentMode: .fit)
+      .frame(width: 36, height: 36)
   }
 }
 
-// MARK: - 拖放区域视图
+// 拖放区域包装器：将 NSView 的拖放事件桥接到 SwiftUI
 struct DropZoneView: NSViewRepresentable {
   let onDrop: (URL) -> Void
   @Binding var isHovering: Bool
@@ -407,29 +390,22 @@ struct DropZoneView: NSViewRepresentable {
   func updateNSView(_ nsView: NSView, context: Context) {}
 }
 
-// MARK: - 拖放区域 NSView
+// 原生拖放视图：处理文件拖入与点击选择
 class DropZoneNSView: NSView {
   var onDrop: ((URL) -> Void)?
   var onHoverChanged: ((Bool) -> Void)?
-  private var isDragging = false
 
   override init(frame frameRect: NSRect) {
     super.init(frame: frameRect)
-    setup()
+    registerForDraggedTypes([.fileURL])
   }
 
   required init?(coder: NSCoder) {
     super.init(coder: coder)
-    setup()
-  }
-
-  private func setup() {
     registerForDraggedTypes([.fileURL])
-    wantsLayer = true
-    layer?.backgroundColor = NSColor.clear.cgColor
-    layer?.cornerRadius = 12
   }
 
+  // 点击时弹出应用选择面板
   override func mouseDown(with event: NSEvent) {
     let panel = NSOpenPanel()
     panel.allowsMultipleSelection = false
@@ -443,18 +419,15 @@ class DropZoneNSView: NSView {
   }
 
   override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-    isDragging = true
     onHoverChanged?(true)
     return .copy
   }
 
   override func draggingExited(_ sender: NSDraggingInfo?) {
-    isDragging = false
     onHoverChanged?(false)
   }
 
   override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
-    isDragging = false
     onHoverChanged?(false)
 
     guard let items = sender.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: nil),
@@ -467,7 +440,7 @@ class DropZoneNSView: NSView {
   }
 }
 
-// MARK: - 命令执行
+// 同步执行命令并返回标准输出与标准错误合并后的文本
 func runCommand(_ path: String, _ args: [String]) -> String {
   let process = Process()
   process.executableURL = URL(fileURLWithPath: path)
