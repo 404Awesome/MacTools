@@ -18,7 +18,8 @@ struct ContentView: View {
     SidebarItem(title: "插件加载") { AnyView(PluginLoad()) },
     SidebarItem(title: "修复应用") { AnyView(FixMacApp()) },
     SidebarItem(title: "环境信息") { AnyView(EnvInfo()) },
-    SidebarItem(title: "禁用键盘") { AnyView(DisableKeyboard()) }
+    SidebarItem(title: "禁用键盘") { AnyView(DisableKeyboard()) },
+    SidebarItem(title: "禁用音乐") { AnyView(NoTunesAgent()) },
   ]
 
   @State private var selectedItem: SidebarItem?
