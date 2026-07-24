@@ -82,6 +82,24 @@ MacTools 是一款使用 **SwiftUI** 原生开发的 macOS 工具集应用，专
 
 </td>
 </tr>
+<tr>
+<td width="50%">
+
+### 禁用音乐
+
+阻止 Apple Music / iTunes 自动启动。
+
+- 使用 LaunchAgent 后台守护
+- 实时监听应用启动事件
+- 自动终止 Music / iTunes 进程
+- 记录拦截日志与统计
+- 一键启用/禁用
+
+</td>
+<td width="50%">
+
+</td>
+</tr>
 </table>
 
 ## 快速开始
@@ -121,7 +139,7 @@ brew install create-dmg
 ./build-dmg.sh
 ```
 
-生成的 DMG 文件位于 `./dist/MacTools-1.3.0.dmg`
+生成的 DMG 文件位于 `./dist/MacTools-1.2.0.dmg`
 
 ## 技术栈
 
@@ -165,7 +183,8 @@ MacTools/
 │   ├── PluginLoad.swift           # 插件构建部署
 │   ├── FixMacApp.swift            # 应用修复
 │   ├── EnvInfo.swift              # 环境信息
-│   └── DisableKeyboard.swift      # 禁用键盘
+│   ├── DisableKeyboard.swift      # 禁用键盘
+│   └── NoTunesAgent.swift         # 禁用音乐
 └── Assets.xcassets/               # 图标资源
 ```
 

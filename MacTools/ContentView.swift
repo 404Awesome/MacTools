@@ -1,10 +1,6 @@
 import SwiftUI
 
 struct ContentView: View {
-  #if DEBUG
-    @ObserveInjection var forceRedraw
-  #endif
-
   struct SidebarItem: Identifiable, Hashable {
     let id = UUID()
     let title: String
@@ -48,7 +44,6 @@ struct ContentView: View {
       }
     )
     .navigationTitle("MacTools")
-    .enableInjection()
   }
 }
 
